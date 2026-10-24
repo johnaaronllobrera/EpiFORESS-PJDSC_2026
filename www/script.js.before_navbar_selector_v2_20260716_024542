@@ -1,0 +1,176 @@
+    Shiny.addCustomMessageHandler('toggleFullscreen', function(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!document.fullscreenElement) {
+        el.requestFullscreen().then(() => {
+          setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+          }, 300);
+        }).catch(function(err) {
+          console.log('Fullscreen request failed:', err);
+        });
+      } else {
+        document.exitFullscreen().then(() => {
+          setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+          }, 300);
+        });
+      }
+    });
+    document.addEventListener('fullscreenchange', function() {
+      setTimeout(function() {
+        window.dispatchEvent(new Event('resize'));
+      }, 300);
+    });
+    Shiny.addCustomMessageHandler('epiforessShowOverlay', function(msg) {
+      var el = document.getElementById('epiforess_loading_overlay');
+      var bar = document.getElementById('epiforess_loading_progress_bar');
+      var detail = document.getElementById('epiforess_loading_detail');
+      if (bar) bar.style.width = '0%';
+      if (detail) detail.innerText = (msg && msg.text) ? msg.text : 'Preparing batch...';
+      if (el) el.classList.add('epiforess-visible');
+    });
+    Shiny.addCustomMessageHandler('epiforessUpdateOverlay', function(msg) {
+      var detail = document.getElementById('epiforess_loading_detail');
+      var bar = document.getElementById('epiforess_loading_progress_bar');
+      if (detail && msg.text) detail.innerText = msg.text;
+      if (bar && typeof msg.percent === 'number') bar.style.width = msg.percent + '%';
+    });
+    Shiny.addCustomMessageHandler('epiforessHideOverlay', function(msg) {
+      var el = document.getElementById('epiforess_loading_overlay');
+      if (el) el.classList.remove('epiforess-visible');
+    });
+
+/* EPIFORESS NAVBAR SERIES SELECTOR PATCH V2 - START */
+(function () {
+  "use strict";
+
+  var mountPending = false;
+
+  function normalizedText(element) {
+    return element
+      ? element.textContent.trim().replace(/\s+/g, " ").toLowerCase()
+      : "";
+  }
+
+  function resultsPageIsActive() {
+    var activeLinks = document.querySelectorAll(
+      ".navbar .navbar-nav .nav-link.active"
+    );
+
+    for (var i = 0; i < activeLinks.length; i += 1) {
+      if (normalizedText(activeLinks[i]) === "results") {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function navbarMountPoint() {
+    return (
+      document.querySelector(".navbar .navbar-collapse") ||
+      document.querySelector(".navbar .container-fluid") ||
+      document.querySelector(".navbar")
+    );
+  }
+
+  function chooseCurrentSwitcher() {
+    var candidates = Array.prototype.slice.call(
+      document.querySelectorAll(".ef-global-series-switcher")
+    );
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    var fresh = candidates.find(function (element) {
+      return !element.classList.contains("ef-navbar-mounted-switcher");
+    });
+
+    var chosen = fresh || candidates[0];
+
+    candidates.forEach(function (element) {
+      if (
+        element !== chosen &&
+        element.classList.contains("ef-navbar-mounted-switcher")
+      ) {
+        element.remove();
+      }
+    });
+
+    return chosen;
+  }
+
+  function mountSeriesSwitcher() {
+    mountPending = false;
+
+    var switcher = chooseCurrentSwitcher();
+    var mountPoint = navbarMountPoint();
+
+    if (!switcher || !mountPoint) {
+      return;
+    }
+
+    var oldParent = switcher.parentElement;
+
+    switcher.classList.add("ef-navbar-mounted-switcher");
+
+    if (switcher.parentElement !== mountPoint) {
+      mountPoint.appendChild(switcher);
+    }
+
+    if (
+      oldParent &&
+      oldParent !== mountPoint &&
+      oldParent.children.length === 0 &&
+      oldParent.textContent.trim() === ""
+    ) {
+      oldParent.classList.add("ef-empty-switcher-origin");
+    }
+
+    switcher.style.display = resultsPageIsActive() ? "" : "none";
+  }
+
+  function scheduleMount() {
+    if (mountPending) {
+      return;
+    }
+
+    mountPending = true;
+
+    window.requestAnimationFrame(function () {
+      mountSeriesSwitcher();
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", scheduleMount);
+  document.addEventListener("shown.bs.tab", scheduleMount);
+
+  document.addEventListener("click", function (event) {
+    if (event.target.closest(".navbar .nav-link")) {
+      window.setTimeout(scheduleMount, 0);
+    }
+  });
+
+  if (window.jQuery) {
+    window.jQuery(document).on(
+      "shiny:connected shiny:value shiny:recalculated shown.bs.tab",
+      scheduleMount
+    );
+  }
+
+  var observer = new MutationObserver(function () {
+    scheduleMount();
+  });
+
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class"]
+  });
+
+  scheduleMount();
+})();
+/* EPIFORESS NAVBAR SERIES SELECTOR PATCH V2 - END */

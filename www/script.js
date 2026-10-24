@@ -1,0 +1,43 @@
+    Shiny.addCustomMessageHandler('toggleFullscreen', function(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!document.fullscreenElement) {
+        el.requestFullscreen().then(() => {
+          setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+          }, 300);
+        }).catch(function(err) {
+          console.log('Fullscreen request failed:', err);
+        });
+      } else {
+        document.exitFullscreen().then(() => {
+          setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+          }, 300);
+        });
+      }
+    });
+    document.addEventListener('fullscreenchange', function() {
+      setTimeout(function() {
+        window.dispatchEvent(new Event('resize'));
+      }, 300);
+    });
+    Shiny.addCustomMessageHandler('epiforessShowOverlay', function(msg) {
+      var el = document.getElementById('epiforess_loading_overlay');
+      var bar = document.getElementById('epiforess_loading_progress_bar');
+      var detail = document.getElementById('epiforess_loading_detail');
+      if (bar) bar.style.width = '0%';
+      if (detail) detail.innerText = (msg && msg.text) ? msg.text : 'Preparing batch...';
+      if (el) el.classList.add('epiforess-visible');
+    });
+    Shiny.addCustomMessageHandler('epiforessUpdateOverlay', function(msg) {
+      var detail = document.getElementById('epiforess_loading_detail');
+      var bar = document.getElementById('epiforess_loading_progress_bar');
+      if (detail && msg.text) detail.innerText = msg.text;
+      if (bar && typeof msg.percent === 'number') bar.style.width = msg.percent + '%';
+    });
+    Shiny.addCustomMessageHandler('epiforessHideOverlay', function(msg) {
+      var el = document.getElementById('epiforess_loading_overlay');
+      if (el) el.classList.remove('epiforess-visible');
+    });
+
