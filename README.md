@@ -50,19 +50,14 @@ These diagnostics are evidence for interpretation, not standalone guarantees of 
 ### 4. Produces a continuous readiness score
 The score is defined in the application as:
 
-\[
-\text{EpiFORESS} = 100 \times [1 - P(\text{Hybrid Not Ready})]
-\]
+EpiFORESS Score = 100 × [1 − P(Hybrid Not Ready)]
 
 The scoring workflow combines statistical and machine-learning model outputs using the saved model artifacts and calibration components configured by the application. The score is presented on a 0–100 scale, with higher values indicating greater estimated forecast-readiness under the fitted system.
 
 The application also reports an estimated median Best MASE using the implemented validation-set calibration:
 
-\[
-\widehat{\operatorname{Median}}(\text{Best MASE})
-= \exp\left(0.688744 - 0.145625 \times
-\frac{\text{EpiFORESS}}{10}\right)
-\]
+Estimated Median Best MASE =
+    exp(0.688744 − 0.145625 × (EpiFORESS Score / 10))
 
 This is a **secondary calibrated estimate**, not a substitute for evaluating forecasts against held-out observations.
 
