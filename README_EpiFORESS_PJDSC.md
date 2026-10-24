@@ -69,17 +69,15 @@ The application supports individual-series and batch workflows as implemented in
 
 ### 2. Feature extraction
 
-EpiFORESS uses a **49-feature predictor profile** organized around characteristics relevant to time-series forecasting. The implemented feature set spans domains such as:
+EpiFORESS uses a **predictor profile** organized around characteristics relevant to time-series forecasting. The implemented feature set spans domains such as:
 
-- Distribution and variability
-- Trend and seasonal structure
-- Serial dependence
-- Entropy and complexity
-- Missingness and reporting artifacts
-- Zero counts and intermittency
-- Repetition and heaping
-- Peaks, outbreaks, and extreme observations
-- Level shifts and temporal instability
+- Distributional Characteristics
+- Temporal Structure
+- Spectral and Complexity Measures
+- Data Quality Characteristics
+- Outbreak and Structural Characteristics
+- Signal Quality and Noise Characteristics
+- Inter-Annual Stability Characteristics
 
 The precise feature definitions, transformations, and availability rules are defined in the R source. Some features may be unavailable or uninformative for short, constant, or highly incomplete series.
 
