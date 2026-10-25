@@ -91,9 +91,7 @@ Their predicted probabilities of forecast non-readiness are combined using inver
 
 The application combines the component probabilities using the configured weights:
 
-P_H(Not Ready) =
-    0.310 × P_Stepwise(Not Ready)
-  + 0.690 × P_RandomForest(Not Ready)
+P_H(Not Ready) = 0.310 × P_Stepwise(Not Ready) + 0.690 × P_RandomForest(Not Ready)
 
 The hybrid probability is converted into a continuous readiness score:
 
@@ -103,8 +101,7 @@ Higher scores indicate stronger predicted forecast-readiness under the trained s
 
 The application also estimates median Best MASE:
 
-Estimated Median Best MASE =
-    exp[0.688744 − 0.145625 × (EpiFORESS Score / 10)]
+Estimated Median Best MASE = exp[0.688744 − 0.145625 × (EpiFORESS Score / 10)]
 
 This is a model-based estimate, not a guarantee of future forecasting error.
 
