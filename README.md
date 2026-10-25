@@ -9,33 +9,18 @@
 
 [![Built with R](https://img.shields.io/badge/Built%20with-R-276DC3?logo=r)](https://www.r-project.org/)
 [![Shiny](https://img.shields.io/badge/App-Shiny-1F78B4)](https://shiny.posit.co/)
-[![Focus](https://img.shields.io/badge/Domain-Public%20Health%20Forecasting-167D6A)](https://www.who.int/)
 
 </div>
 
 ---
 
-## The problem
+## Overview
 
-Epidemiological surveillance data are collected to monitor public health, but a recorded time series is not automatically suitable for reliable forecasting. Missing reports, underreporting, heaping, repeated values, excess zeros, outbreaks, changing levels, and unstable seasonal patterns can affect the information available to a forecasting model.
+Epidemiological surveillance data are not automatically suitable for reliable forecasting. Missing reports, underreporting, excess zeros, outbreaks, and structural changes can affect forecasting performance.
 
-Forecasting workflows commonly focus on *which model to fit*. EpiFORESS foregrounds an earlier question:
+EpiFORESS is an R Shiny application that screens epidemiological time series before model selection. It extracts 49 predictors, applies a hybrid statistical and machine-learning scoring workflow, and provides readiness scores, diagnostic summaries, and exportable results.
 
-> **Does this series exhibit characteristics associated with forecast-readiness, and what should be examined before forecasting proceeds?**
-
-EpiFORESS (Epidemiological Forecasting-Readiness Screening System) is an R/Shiny decision-support application that extracts a feature profile from an epidemiological time series, applies a trained hybrid statistical and machine-learning scoring workflow, displays diagnostic context, and produces exportable results.
-
-The intended contribution is a **pre-modeling screening step** that helps analysts prioritize data review and forecasting validation. EpiFORESS does not guarantee forecast accuracy, replace epidemiological judgment, or remove the need for out-of-sample evaluation.
-
-## Why EpiFORESS?
-
-- **Readiness before model selection:** evaluates series characteristics before a user commits to a forecasting model.
-- **A multi-feature view:** summarizes temporal structure, distributional behavior, complexity, and possible surveillance artifacts.
-- **Interpretable diagnostics:** presents supporting indicators and STL decomposition when the data support it.
-- **Operational outputs:** provides feature tables, CSV exports, batch scoring outputs, and PDF reports.
-- **A validation-first philosophy:** treats the score as a screening signal, not as proof that a future forecast will be accurate.
-
----
+The goal is to help analysts prioritize data review and forecasting experiments. EpiFORESS supports decision-making but does not guarantee forecast accuracy or replace out-of-sample validation.
 
 ## How it works
 
@@ -43,121 +28,154 @@ The intended contribution is a **pre-modeling screening step** that helps analys
 Epidemiological time series
             |
             v
-Data checks and time-index preparation
+Input preparation and diagnostics
             |
             v
-Feature extraction and diagnostic assessment
+Feature extraction (49 predictors)
             |
             v
-Trained statistical + machine-learning models
+BIC Stepwise Logistic Regression + Random Forest
             |
             v
-Hybrid forecast-readiness score
+Inverse-Brier-weighted hybrid score
             |
             v
-Diagnostic review, feature exports, and PDF report
+Diagnostic review and report export
             |
             v
-Candidate forecasting + time-ordered validation
+Candidate forecasting and rolling-origin validation
 ```
 
-### 1. Input and preparation
+## Methodology
 
-The application supports individual-series and batch workflows as implemented in the repository. Year/week metadata can be used to present a meaningful time axis. Users should verify chronological order, consistent reporting intervals, valid counts, and the meaning of missing observations before interpreting any score.
+EpiFORESS operationalizes the project's **SEAFRAME** workflow: Seeding, Emulation, Assessment, Forecast-Readiness Labeling, Representation, Algorithmic Modeling, and Evaluation.
 
-**A missing report is not necessarily a zero count.** Missingness should only be converted to zero when the surveillance definition and data-generation process justify that interpretation.
+### Simulation and forecasting assessment
 
-### 2. Feature extraction
+Weekly Philippine Integrated Disease Surveillance and Response (PIDSR) data from 2019–2023 for 20 disease seeds informed the simulation design. A negative binomial data-generating process generated **10,000 synthetic series**, with 500 simulations per seed and 260 weekly observations per series. Simulated surveillance imperfections included missingness, underreporting, heaping, reporting delays, excess zeros, repeated observations, outbreaks, and level shifts.
 
-EpiFORESS uses a **predictor profile** organized around characteristics relevant to time-series forecasting. The implemented feature set spans domains such as:
+Each series underwent rolling-origin evaluation using five candidate forecasting methods:
 
-- Distributional Characteristics
-- Temporal Structure
-- Spectral and Complexity Measures
-- Data Quality Characteristics
-- Outbreak and Structural Characteristics
-- Signal Quality and Noise Characteristics
-- Inter-Annual Stability Characteristics
+- Seasonal naïve
+- STL-ETS
+- Seasonal ARIMA (SARIMA)
+- Nonseasonal ARIMA
+- Negative binomial time-series regression
 
-The precise feature definitions, transformations, and availability rules are defined in the R source. Some features may be unavailable or uninformative for short, constant, or highly incomplete series.
+The evaluation used an initial window of 156 observations, a rolling step of 13, up to six forecast origins, and a 13-observation forecast horizon.
 
-### 3. Diagnostic assessment
+Mean Absolute Scaled Error (MASE) was the primary performance metric. The lowest MASE across candidate models was retained as **Best MASE**.
 
-The interface includes stationarity-related diagnostics and STL decomposition summaries for trend, seasonal, and residual components when decomposition is supported by the series. For seasonal frequency \(m\), the application advises at least two complete seasonal cycles before STL decomposition; for weekly data with annual seasonality, this is approximately 104 observations at frequency 52.
+**Primary readiness criterion:** Ready if Best MASE < 1.00; otherwise, Not Ready.
 
-These diagnostics describe properties of the observed series. They do not, individually, establish forecastability.
+### Feature extraction and hybrid modeling
 
-### 4. Hybrid readiness scoring
+The 49 predictors span seven domains:
 
-The application combines outputs from saved statistical and machine-learning models. The score is expressed on a 0–100 scale:
+1. Distributional characteristics
+2. Temporal structure
+3. Spectral and complexity measures
+4. Data quality characteristics
+5. Outbreak and structural characteristics
+6. Signal quality and noise characteristics
+7. Inter-annual stability characteristics
 
-```text
-EpiFORESS Score = 100 × [1 − P(Hybrid Not Ready)]
-```
+The hybrid scoring system combines two classifiers:
 
-Higher scores indicate a greater estimated probability of readiness under the trained scoring system. The result depends on the saved models, feature-processing pipeline, and calibration used by the application.
+- **BIC-selected stepwise logistic regression**, representing the statistical component.
+- **Random Forest**, capturing nonlinear relationships and interactions among predictors.
 
-The application also reports a calibrated estimate of median Best MASE:
+Their predicted probabilities of forecast non-readiness are combined using inverse-Brier-score weighting.
 
-```text
-Estimated Median Best MASE =
-    exp(0.688744 − 0.145625 × (EpiFORESS Score / 10))
-```
+## Scoring and interpretation
 
-This estimate is a secondary model-based summary. It is **not a guarantee of future forecast error** and should not replace direct evaluation on held-out observations.
+The application combines the component probabilities using the configured weights:
 
-### 5. Reporting and export
+\[
+\begin{aligned}
+P_H(\text{Not Ready})={}&
+0.310P_{\text{Stepwise Logistic}}(\text{Not Ready})\\
+&+0.690P_{\text{Random Forest}}(\text{Not Ready})
+\end{aligned}
+\]
 
-Depending on the workflow, the application provides:
+The hybrid probability is converted into a continuous readiness score:
 
-- Series-level score and readiness band
-- Diagnostic summary cards
-- STL decomposition plot
-- Feature tables grouped by domain
-- Selected-data inspection
-- CSV export of series features
-- Batch feature export
-- Downloadable PDF reports
+\[
+\text{EpiFORESS Score}=100[1-P_H(\text{Not Ready})]
+\]
 
----
+Higher scores indicate stronger predicted forecast-readiness under the trained scoring system.
 
-## Interpreting the readiness bands
+The application also estimates median Best MASE:
 
-The application displays the following descriptive score bands:
+\[
+\widehat{\operatorname{Median}(\text{Best MASE})}
+=\exp\left(0.688744-0.145625
+\frac{\text{Score}}{10}\right)
+\]
 
-| Score | Band | Practical next step |
+This is a model-based estimate, not a guarantee of future forecasting error.
+
+### Readiness bands
+
+| Score | Band | Interpretation |
 |---:|---|---|
-| 0–19 | Very Low | Review data quality and the series definition before routine forecasting. |
-| 20–34 | Low | Investigate instability and reporting artifacts; treat model results as exploratory. |
-| 35–59 | Moderate | Compare candidate models cautiously and document limitations. |
-| 60–79 | High | Proceed to candidate-model fitting and time-ordered validation. |
-| 80–100 | Very High | A stronger readiness signal; still validate out of sample before operational use. |
+| 0–19 | Very Low | Very limited support for routine forecasting. |
+| 20–34 | Low | Keep forecasting exploratory while addressing limitations. |
+| 35–59 | Moderate | Consider cautious candidate-model comparison. |
+| 60–79 | High | Favorable candidate for model fitting and rolling-origin validation. |
+| 80–100 | Very High | Strong candidate, pending comprehensive out-of-sample validation. |
 
-These bands are application-level guidance, not universal epidemiological thresholds. A high score does not guarantee accurate forecasts, and a low score does not mean forecasting is impossible. Interpret scores in relation to the disease, surveillance system, time window, forecast horizon, and consequences of error.
+The bands provide descriptive screening guidance, not universal epidemiological thresholds. A reference point of \(P(\text{Not Ready})=0.66\) corresponds to a score of 34. EpiFORESS does not independently issue a binary readiness decision. Scores should be interpreted alongside diagnostic indicators and screening notes.
 
----
+## Evaluation results
 
-## Data sources and data management
+### Simulated-data performance
 
-The repository includes a workbook named `DOH PIDSR DATA (2019-2023).xlsx`, which is identified in the project as Philippine Department of Health PIDSR data for 2019–2023. The workbook is the project’s local analysis input; its inclusion in the repository should not be interpreted as an endorsement by the Department of Health or as confirmation that all redistribution permissions have been satisfied.
+| Metric | Held-out test | Leave-one-dataset-out |
+|---|---:|---:|
+| Balanced accuracy | 0.91 | 0.90 |
+| PR-AUC | 0.94 | 0.94 |
+| F1 score | 0.88 | 0.85* |
+| Matthews correlation coefficient | 0.82 | 0.77 |
+| Brier score | 0.07 | 0.08 |
 
-For transparent and responsible use:
+*The LODO F1 score refers to the Not Ready class; the held-out test F1 is the reported overall score.
 
-1. Record the original source, extraction date, reporting period, variable definitions, and any transformations.
-2. Retain the original source separately from cleaned or derived data.
-3. Document how missing reports, zero counts, duplicates, and revisions are handled.
-4. Check data-sharing permissions and applicable privacy, institutional, and government requirements before redistributing or deploying the workbook.
-5. Do not treat an observed zero as confirmed absence of disease without considering surveillance and detection processes.
+The held-out evaluation indicates strong predictive performance on unseen simulated series. Leave-one-dataset-out (LODO) evaluation assesses performance when an entire disease dataset is excluded from model development.
 
-For new datasets, confirm that the data structure matches the application's input and validation logic. New diseases, countries, reporting systems, and time intervals may require recalibration and independent validation.
+### Empirical validation
 
----
+In Philippine surveillance data, EpiFORESS scores were inversely associated with Best MASE (Spearman's \(\rho=-0.74\), \(p<0.0001\)). Linear regression estimated a score coefficient of −0.05 (\(p<0.0001\)).
+
+At an empirical score threshold of 33, classification achieved a balanced accuracy of 0.88 and an F1 score of 0.86 for Not Ready. The Jonckheere–Terpstra test supported an ordered trend in forecasting performance across readiness groups (statistic = 11, \(p<0.0001\)).
+
+### External and cross-domain evaluation
+
+External evaluation using United States disease series yielded a Spearman correlation of −0.52 between EpiFORESS scores and Best MASE. Each 10-point increase in score was associated with an estimated 24.6% reduction in Best MASE. The ROC-AUC for the Best MASE < 1.00 criterion was 0.84.
+
+Exploratory analyses also found inverse associations between EpiFORESS scores and forecasting error in weather (\(\rho=-0.54\), \(p=0.014\)) and electricity-load series (\(\rho=-0.44\), \(p=0.014\)).
+
+These findings motivate further independent validation and domain-specific recalibration. Results remain specific to the evaluated datasets and validation designs.
+
+## Application features
+
+- Individual-series and batch screening
+- Screening of up to 1,000 series per run
+- Optional grouping by location or another variable
+- Automated extraction of 49 predictors
+- Hybrid readiness scoring and descriptive bands
+- Diagnostic summaries and STL decomposition when supported
+- Ranked series, feature tables, and screening notes
+- CSV exports and downloadable PDF reports
 
 ## Repository structure
 
 ```text
 EpiFORESS-PJDSC_2026/
 ├── app.R
+├── Model Development Scripts (SEAFRAME)/
 ├── R/
 │   ├── 00_setup.R
 │   ├── 01_helpers.R
@@ -174,31 +192,25 @@ EpiFORESS-PJDSC_2026/
 └── README.md
 ```
 
-The `R/` directory separates application setup, helpers, model configuration, diagnostics, feature extraction, scoring, PDF generation, user interface, and server logic. `app.R` is the application entry point. The `saved_models/` directory contains the trained model artifacts required by the scoring workflow, while `www/` holds web assets such as styling or JavaScript where applicable.
-
-Keep model filenames and directory names consistent with the paths expected by the source code. Do not publish credentials, private data, or model artifacts whose redistribution is not authorized.
-
----
+`app.R` launches the application. The `R/` directory contains the application modules, `saved_models/` stores trained model artifacts, and `www/` contains supporting web assets. The SEAFRAME development scripts document the simulation and model-development workflow.
 
 ## Installation and execution
 
-### Prerequisites
+### Requirements
 
 - A recent version of [R](https://www.r-project.org/)
 - [RStudio Desktop](https://posit.co/download/rstudio-desktop/) (recommended)
-- The R packages required by the project
-- The model artifacts in `saved_models/`
-- The UI assets in `www/`, if required by the application
-
-The package setup code is the authoritative source for the application's current dependencies. For reproducible deployment, record the R version and package versions used. A dependency lockfile (for example, one generated with `renv`) is recommended for future releases.
+- Required R packages
+- Trained model artifacts in `saved_models/`
+- Supporting assets in `www/`, where required
 
 ### Run the application
 
-1. Clone or download this repository.
-2. Open the repository root as the working directory in RStudio.
-3. Verify that the model artifacts and required web assets are present.
-4. Install any missing dependencies according to the setup script.
-5. Run the application:
+1. Clone or download the repository.
+2. Open the repository root in RStudio.
+3. Install dependencies specified by the setup scripts.
+4. Verify that the required model artifacts and assets are present.
+5. Run:
 
 ```r
 shiny::runApp()
@@ -206,60 +218,15 @@ shiny::runApp()
 
 Alternatively, open `app.R` in RStudio and select **Run App**.
 
-### Reproducibility checklist
+For reproducibility, record the R and package versions used. A dependency lockfile, such as one generated with `renv`, is recommended.
 
-Before presenting or deploying the application:
+## Data management and responsible use
 
-- [ ] Confirm that all required model artifacts load successfully.
-- [ ] Confirm that the feature names, ordering, transformations, and model expectations agree.
-- [ ] Run the app on a known example series and inspect the outputs.
-- [ ] Test short, constant, incomplete, and seasonal series.
-- [ ] Verify the score, readiness band, feature table, CSV exports, and PDF report.
-- [ ] Record R and package versions.
-- [ ] Keep a known-good input and expected output for regression testing.
-- [ ] Confirm permissions for any real surveillance data included or shared.
+The repository includes `DOH PIDSR DATA (2019-2023).xlsx`, identified as Philippine Department of Health PIDSR data. Its inclusion does not imply official endorsement or confirm redistribution permissions.
 
----
+Document data sources, reporting intervals, transformations, and the treatment of missing reports and zero counts. Verify applicable data-sharing permissions before redistribution or deployment. A missing report should not automatically be interpreted as zero disease occurrence.
 
-## Real-world application and future directions
-
-EpiFORESS is designed to support analysts who need to decide where to invest time in data review and forecasting experiments. Potential uses include:
-
-- **Surveillance analytics:** flag series that may need additional data-quality investigation.
-- **Forecasting workflow triage:** prioritize series for candidate-model evaluation.
-- **Research and teaching:** demonstrate why forecast performance depends on series characteristics as well as model choice.
-- **Reporting and review:** provide a consistent diagnostic summary for analysts and collaborators.
-
-These are intended applications, not evidence that the tool has been prospectively validated for routine public-health decision-making.
-
-### Priority next steps
-
-1. **External validation:** evaluate on additional diseases, years, regions, and surveillance systems not used in model development.
-2. **Threshold sensitivity:** report how conclusions change under alternative readiness definitions, including Best MASE < 1.00.
-3. **Calibration assessment:** compare predicted readiness probabilities with observed outcomes in independent data.
-4. **Subgroup performance:** investigate whether performance differs by disease, prevalence, zero frequency, or artifact burden.
-5. **Reproducible deployment:** pin dependencies, add automated checks, and document tested software environments.
-6. **Human-centered evaluation:** assess whether the diagnostics and reports help intended users make better-informed workflow decisions.
-
----
-
-## Technical methods and rationale
-
-- **Feature-based screening:** compresses multiple temporal and reporting characteristics into a structured series-level representation.
-- **Hybrid statistical and machine-learning scoring:** combines complementary model outputs using the model configuration saved with the application.
-- **Rolling-origin forecast evaluation:** preserves temporal order and evaluates predictions on later observations, consistent with established time-series validation guidance (Hyndman & Athanasopoulos, 2021).
-- **MASE-based performance labeling:** uses a scaled error measure for comparability across series, with the caveat that the chosen readiness threshold is a project-specific operational definition rather than a universal standard (Hyndman & Koehler, 2006).
-- **Diagnostic reporting:** supports review of the feature profile and underlying series instead of presenting the score as an unexplained verdict.
-
-The contribution is not that one score can settle forecastability for every epidemiological series. It is that forecast-readiness is treated as an explicit, testable pre-modeling question and linked to a documented analytical workflow.
-
----
-
-## Limitations and responsible use
-
-EpiFORESS is a research and decision-support tool. Its outputs depend on the training data, labels, feature definitions, fitted models, calibration, and input quality. New settings may require recalibration. The reported empirical evaluation is limited in sample size and should not be treated as definitive evidence of broad generalizability.
-
-Do not use the readiness score alone to make clinical decisions, declare that an outbreak will or will not occur, or allocate public-health resources. Review the result with qualified statistical and public-health professionals, and validate any forecasting model using data that were not used to fit or select it.
+EpiFORESS is a research and decision-support tool. New diseases, surveillance systems, and reporting frequencies may require recalibration and independent validation. Do not use the score alone for clinical decisions, outbreak declarations, or public-health resource allocation. Any selected forecasting model must still be evaluated on observations not used to fit or select it.
 
 ## References
 
