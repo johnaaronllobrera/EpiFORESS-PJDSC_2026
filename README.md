@@ -121,30 +121,6 @@ Depending on the workflow, the application provides:
 
 ---
 
-## Findings and evaluation
-
-The project’s development workflow uses simulated time series to evaluate forecast-readiness prediction, with epidemiological series informing simulation design and supporting empirical assessment. The reported results below should be interpreted in light of the study design and validation sample.
-
-| Evaluation component | Reported result | Interpretation |
-|---|---:|---|
-| Simulated datasets | 10,000 | 500 simulated series for each of 20 disease seeds |
-| Primary readiness definition | Best MASE < 0.50 | Conservative operational labeling criterion used in the primary analysis |
-| Simulated series labeled Ready | 4,006 (40.06%) | Proportion classified Ready under the primary criterion |
-| Simulated series labeled Not Ready | 5,994 (59.94%) | Proportion classified Not Ready under the primary criterion |
-| Empirical validation sample | 17 series | Small validation sample; findings should be treated as preliminary |
-| Association with Best MASE | Pearson \(r=-0.695\), \(p=0.00195\) | Higher scores were associated with lower observed Best MASE in the analyzed sample |
-| Discrimination under the primary criterion | AUC = 0.904; bootstrap 95% CI: 0.731–1.000 | Promising discrimination in the analyzed sample, with substantial uncertainty due to sample size |
-
-**Interpretation guardrail:** These are project-reported results, not a claim of universal performance. The empirical sample is small, and the confidence interval is wide. Independent validation, assessment across additional diseases and surveillance systems, and careful calibration checks are needed before operational use. Results may change when data definitions, observation windows, model versions, or readiness thresholds change.
-
-### Forecast evaluation approach
-
-Forecasting performance in the development workflow is evaluated using time-ordered rolling-origin validation rather than randomly shuffling temporal observations. This is important because future observations must not leak into the information used to fit forecasts. Best MASE is used as the primary performance summary, with additional error metrics retained for context.
-
-MASE is useful for comparing forecasting performance across series with different scales, but its calculation and interpretation still require attention to the benchmark and the properties of each series (Hyndman & Koehler, 2006).
-
----
-
 ## Interpreting the readiness bands
 
 The application displays the following descriptive score bands:
@@ -242,19 +218,6 @@ Before presenting or deploying the application:
 - [ ] Record R and package versions.
 - [ ] Keep a known-good input and expected output for regression testing.
 - [ ] Confirm permissions for any real surveillance data included or shared.
-
----
-
-## Challenges and mitigation
-
-| Challenge | Why it matters | Mitigation |
-|---|---|---|
-| Imperfect surveillance reporting | Observed counts may reflect reporting processes as well as disease occurrence. | Inspect missingness, repeated values, zeros, heaping, and other artifacts; document assumptions. |
-| Heterogeneous diseases and scales | A feature or model can behave differently across diseases and surveillance systems. | Validate across disease groups and recalibrate when moving to a new domain. |
-| Limited empirical validation sample | Performance estimates can be uncertain and may not generalize. | Expand external validation and report uncertainty intervals. |
-| Temporal leakage | Random splits can use future information to evaluate forecasts. | Use chronological splits and rolling-origin evaluation. |
-| Score misinterpretation | A readiness score can be mistaken for a guarantee of forecast accuracy. | Pair the score with diagnostics, clear caveats, and subsequent out-of-sample validation. |
-| Reproducibility across machines | Different package versions or missing model files can prevent execution. | Document dependencies, preserve expected paths, and use a dependency lockfile. |
 
 ---
 
