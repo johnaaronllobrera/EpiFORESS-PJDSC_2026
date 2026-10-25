@@ -310,6 +310,6 @@ World Health Organization. (2017). *Data quality review: A toolkit for facility 
 
 <div align="center">
 
-**EpiFORESS | Epidemiological Forecasting-Readiness Screening System.**
+**EpiFORESS | Epidemiological Forecasting-Readiness Screening System**
 
 </div>
