@@ -91,17 +91,23 @@ Their predicted probabilities of forecast non-readiness are combined using inver
 
 The application combines the component probabilities using the configured weights:
 
-P_H(Not Ready) = 0.310 × P_Stepwise(Not Ready) + 0.690 × P_RandomForest(Not Ready)
+$$
+P_H(\text{Not Ready}) = 0.310 \times P_{\text{Stepwise}}(\text{Not Ready}) + 0.690 \times P_{\text{RF}}(\text{Not Ready})
+$$
 
 The hybrid probability is converted into a continuous readiness score:
 
-EpiFORESS Score = 100 × [1 − P_H(Not Ready)]
+$$
+\text{EpiFORESS Score} = 100 \times \left[1 - P_H(\text{Not Ready})\right]
+$$
 
 Higher scores indicate stronger predicted forecast-readiness under the trained scoring system.
 
 The application also estimates median Best MASE:
 
-Estimated Median Best MASE = exp[0.688744 − 0.145625 × (EpiFORESS Score / 10)]
+$$
+\text{Estimated Median Best MASE} = \exp\left[0.688744 - 0.145625 \times \frac{\text{EpiFORESS Score}}{10}\right]
+$$
 
 This is a model-based estimate, not a guarantee of future forecasting error.
 
@@ -115,7 +121,7 @@ This is a model-based estimate, not a guarantee of future forecasting error.
 | 60–79 | High | Favorable candidate for model fitting and rolling-origin validation. |
 | 80–100 | Very High | Strong candidate, pending comprehensive out-of-sample validation. |
 
-The bands provide descriptive screening guidance, not universal epidemiological thresholds. A reference point of \(P(\text{Not Ready})=0.66\) corresponds to a score of 34. EpiFORESS does not independently issue a binary readiness decision. Scores should be interpreted alongside diagnostic indicators and screening notes.
+The bands provide descriptive screening guidance, not universal epidemiological thresholds. A reference point of $P(\text{Not Ready}) = 0.66$ corresponds to a score of 34. EpiFORESS does not independently issue a binary readiness decision. Scores should be interpreted alongside diagnostic indicators and screening notes.
 
 ## Evaluation results
 
@@ -125,25 +131,25 @@ The bands provide descriptive screening guidance, not universal epidemiological 
 |---|---:|---:|
 | Balanced accuracy | 0.91 | 0.90 |
 | PR-AUC | 0.94 | 0.94 |
-| F1 score | 0.88 | 0.85* |
+| F1 score | 0.88 | 0.85† |
 | Matthews correlation coefficient | 0.82 | 0.77 |
 | Brier score | 0.07 | 0.08 |
 
-*The LODO F1 score refers to the Not Ready class; the held-out test F1 is the reported overall score.
+<sub>† The leave-one-dataset-out F1 score refers to the Not Ready class; the held-out test F1 is the reported overall score.</sub>
 
 The held-out evaluation indicates strong predictive performance on unseen simulated series. Leave-one-dataset-out (LODO) evaluation assesses performance when an entire disease dataset is excluded from model development.
 
 ### Empirical validation
 
-In Philippine surveillance data, EpiFORESS scores were inversely associated with Best MASE (Spearman's \(\rho=-0.74\), \(p<0.0001\)). Linear regression estimated a score coefficient of −0.05 (\(p<0.0001\)).
+In Philippine surveillance data, EpiFORESS scores were inversely associated with Best MASE (Spearman's $\rho = -0.74$, $p < 0.0001$). Linear regression estimated a score coefficient of −0.05 ($p < 0.0001$).
 
-At an empirical score threshold of 33, classification achieved a balanced accuracy of 0.88 and an F1 score of 0.86 for Not Ready. The Jonckheere–Terpstra test supported an ordered trend in forecasting performance across readiness groups (statistic = 11, \(p<0.0001\)).
+At an empirical score threshold of 33, classification achieved a balanced accuracy of 0.88 and an F1 score of 0.86 for Not Ready. The Jonckheere–Terpstra test supported an ordered trend in forecasting performance across readiness groups (statistic = 11, $p < 0.0001$).
 
 ### External and cross-domain evaluation
 
 External evaluation using United States disease series yielded a Spearman correlation of −0.52 between EpiFORESS scores and Best MASE. Each 10-point increase in score was associated with an estimated 24.6% reduction in Best MASE. The ROC-AUC for the Best MASE < 1.00 criterion was 0.84.
 
-Exploratory analyses also found inverse associations between EpiFORESS scores and forecasting error in weather (\(\rho=-0.54\), \(p=0.014\)) and electricity-load series (\(\rho=-0.44\), \(p=0.014\)).
+Exploratory analyses also found inverse associations between EpiFORESS scores and forecasting error in weather series ($\rho = -0.54$, $p = 0.014$) and electricity-load series ($\rho = -0.44$, $p = 0.014$).
 
 These findings motivate further independent validation and domain-specific recalibration. Results remain specific to the evaluated datasets and validation designs.
 
