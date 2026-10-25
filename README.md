@@ -3,8 +3,6 @@
 # EpiFORESS
 ### Epidemiological Forecasting-Readiness Screening System
 
-**Screen the series before selecting the model.**
-
 *A pre-forecasting decision-support application for epidemiological time series*
 
 [![Built with R](https://img.shields.io/badge/Built%20with-R-276DC3?logo=r)](https://www.r-project.org/)
