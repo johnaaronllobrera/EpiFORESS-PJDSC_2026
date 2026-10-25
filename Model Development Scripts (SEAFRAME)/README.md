@@ -1,7 +1,5 @@
 # EpiFORESS Analysis Pipeline
 
-**Competition-ready research-code subfolder for the EpiFORESS forecasting-readiness study**
-
 This folder contains the eight sequential analysis scripts, from simulation-based development through internal validation and independent external validation. It is organized for review and reproducibility. It is not a claim that every script has been executed successfully: the R runtime and the required source data/model artifacts must be available to complete end-to-end verification.
 
 ## Pipeline map
